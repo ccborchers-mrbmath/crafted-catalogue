@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,9 +22,36 @@ const searchSchema = z.object({
   wood: z.string().optional().catch(undefined),
 });
 
+type ProductRow = {
+  id: string;
+  name: string;
+  slug: string;
+  wood_type: string | null;
+  variants: { price_cents: number; is_active: boolean }[];
+  images: { storage_path: string; alt_text: string | null; sort_order: number }[];
+};
+
+const productsListQueryOptions = queryOptions({
+  queryKey: ["products", "list"],
+  queryFn: async (): Promise<ProductRow[]> => {
+    const { data, error } = await supabase
+      .from("products")
+      .select(
+        "id, name, slug, wood_type, variants:product_variants(price_cents, is_active), images:product_images(storage_path, alt_text, sort_order)",
+      )
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as ProductRow[];
+  },
+});
+
 export const Route = createFileRoute("/products")({
   validateSearch: zodValidator(searchSchema),
   component: ProductsPage,
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(productsListQueryOptions);
+  },
   head: () => ({
     meta: [
       { title: "Products — Nailed It Woodworks" },
@@ -42,33 +69,11 @@ export const Route = createFileRoute("/products")({
   }),
 });
 
-type ProductRow = {
-  id: string;
-  name: string;
-  slug: string;
-  wood_type: string | null;
-  variants: { price_cents: number; is_active: boolean }[];
-  images: { storage_path: string; alt_text: string | null; sort_order: number }[];
-};
-
 function ProductsPage() {
   const { q, wood } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
-  const { data: products, isLoading } = useQuery({
-    queryKey: ["products", "list"],
-    queryFn: async (): Promise<ProductRow[]> => {
-      const { data, error } = await supabase
-        .from("products")
-        .select(
-          "id, name, slug, wood_type, variants:product_variants(price_cents, is_active), images:product_images(storage_path, alt_text, sort_order)",
-        )
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as ProductRow[];
-    },
-  });
+  const { data: products } = useSuspenseQuery(productsListQueryOptions);
 
   const woodTypes = Array.from(
     new Set((products ?? []).map((p) => p.wood_type).filter(Boolean) as string[]),
@@ -154,9 +159,7 @@ function ProductsPage() {
         </section>
 
         <section className="mx-auto max-w-6xl px-6 pb-24 pt-8">
-          {isLoading ? (
-            <div className="text-muted-foreground">Loading…</div>
-          ) : filtered.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="text-muted-foreground py-16 text-center">
               No products match your filters.
             </div>

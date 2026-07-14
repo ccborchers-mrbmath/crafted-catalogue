@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
@@ -8,10 +8,6 @@ import { ProductImage } from "@/components/ProductImage";
 import { formatZAR } from "@/lib/money";
 import heroImg from "@/assets/hero-workshop.jpg";
 import { ArrowRight } from "lucide-react";
-
-export const Route = createFileRoute("/")({
-  component: HomePage,
-});
 
 type FeaturedProduct = {
   id: string;
@@ -22,26 +18,35 @@ type FeaturedProduct = {
   images: { storage_path: string; alt_text: string | null }[];
 };
 
+const featuredProductsQueryOptions = queryOptions({
+  queryKey: ["products", "featured"],
+  queryFn: async (): Promise<FeaturedProduct[]> => {
+    const { data, error } = await supabase
+      .from("products")
+      .select(
+        "id, name, slug, wood_type, variants:product_variants(price_cents, is_active), images:product_images(storage_path, alt_text, sort_order)",
+      )
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(3);
+    if (error) throw error;
+    return (data ?? []).map((p: any) => ({
+      ...p,
+      variants: (p.variants ?? []).filter((v: any) => v.is_active),
+      images: (p.images ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+    }));
+  },
+});
+
+export const Route = createFileRoute("/")({
+  component: HomePage,
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(featuredProductsQueryOptions);
+  },
+});
+
 function HomePage() {
-  const { data: featured } = useQuery({
-    queryKey: ["featured-products"],
-    queryFn: async (): Promise<FeaturedProduct[]> => {
-      const { data, error } = await supabase
-        .from("products")
-        .select(
-          "id, name, slug, wood_type, variants:product_variants(price_cents, is_active), images:product_images(storage_path, alt_text, sort_order)",
-        )
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(3);
-      if (error) throw error;
-      return (data ?? []).map((p: any) => ({
-        ...p,
-        variants: (p.variants ?? []).filter((v: any) => v.is_active),
-        images: (p.images ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
-      }));
-    },
-  });
+  const { data: featured } = useSuspenseQuery(featuredProductsQueryOptions);
 
   return (
     <div className="min-h-screen flex flex-col">
