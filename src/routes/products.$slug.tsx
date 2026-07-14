@@ -43,7 +43,11 @@ const productBySlugQueryOptions = (slug: string) =>
         .maybeSingle();
       if (error) throw error;
       if (!data) throw notFound();
-      return data as ProductDetailRow;
+      return {
+        ...data,
+        variants: data.variants ?? [],
+        images: data.images ?? [],
+      } as ProductDetailRow;
     },
   });
 
