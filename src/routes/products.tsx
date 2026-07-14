@@ -112,7 +112,10 @@ function ProductsPage() {
                 value={q ?? ""}
                 onChange={(e) =>
                   navigate({
-                    search: (prev) => ({ ...prev, q: e.target.value || undefined }),
+                    search: (prev: z.infer<typeof searchSchema>) => ({
+                      ...prev,
+                      q: e.target.value || undefined,
+                    }),
                     replace: true,
                   })
                 }
@@ -126,7 +129,10 @@ function ProductsPage() {
                 value={wood ?? "all"}
                 onValueChange={(v) =>
                   navigate({
-                    search: (prev) => ({ ...prev, wood: v === "all" ? undefined : v }),
+                    search: (prev: z.infer<typeof searchSchema>) => ({
+                      ...prev,
+                      wood: v === "all" ? undefined : v,
+                    }),
                     replace: true,
                   })
                 }
