@@ -1,21 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const cache = new Map<string, { url: string; expires: number }>();
 const BUCKET = "product-images";
-const TTL_SECONDS = 60 * 60; // 1 hour
 
-/** Get a signed URL for a stored product image path. Cached client-side. */
-export async function getImageUrl(path: string): Promise<string> {
+/**
+ * Public URL for a stored product image path. The product-images bucket is
+ * publicly readable (see the "Public read product images" RLS policy), so
+ * this is a synchronous string build with no network call — safe to call
+ * during SSR and cheap enough to call at render time.
+ */
+export function getPublicImageUrl(path: string | null | undefined): string {
   if (!path) return "";
-  const now = Date.now();
-  const cached = cache.get(path);
-  if (cached && cached.expires > now + 60_000) return cached.url;
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(path, TTL_SECONDS);
-  if (error || !data) return "";
-  cache.set(path, { url: data.signedUrl, expires: now + TTL_SECONDS * 1000 });
-  return data.signedUrl;
+  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 export const PRODUCT_IMAGES_BUCKET = BUCKET;

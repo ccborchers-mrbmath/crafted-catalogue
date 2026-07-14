@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/site/Header";
@@ -8,24 +8,9 @@ import { Button } from "@/components/ui/button";
 import { ProductImage } from "@/components/ProductImage";
 import { EnquiryForm } from "@/components/EnquiryForm";
 import { formatZAR } from "@/lib/money";
+import { getPublicImageUrl } from "@/lib/image-url";
+import { getSiteOrigin } from "@/lib/site-origin";
 import { ChevronLeft } from "lucide-react";
-
-export const Route = createFileRoute("/products/$slug")({
-  component: ProductDetail,
-  head: ({ params }) => ({
-    meta: [
-      { title: `${prettifySlug(params.slug)} — Nailed It` },
-      {
-        name: "description",
-        content: `Handmade ${prettifySlug(params.slug).toLowerCase()} by Nailed It Woodworks.`,
-      },
-    ],
-  }),
-});
-
-function prettifySlug(slug: string) {
-  return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 type ProductDetailRow = {
   id: string;
@@ -44,13 +29,10 @@ type ProductDetailRow = {
   images: { storage_path: string; alt_text: string | null; sort_order: number }[];
 };
 
-function ProductDetail() {
-  const { slug } = Route.useParams();
-  const [enquireOpen, setEnquireOpen] = useState(false);
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["product", slug],
-    queryFn: async (): Promise<ProductDetailRow | null> => {
+const productBySlugQueryOptions = (slug: string) =>
+  queryOptions({
+    queryKey: ["products", "detail", slug],
+    queryFn: async (): Promise<ProductDetailRow> => {
       const { data, error } = await supabase
         .from("products")
         .select(
@@ -60,47 +42,61 @@ function ProductDetail() {
         .eq("is_active", true)
         .maybeSingle();
       if (error) throw error;
-      return data as ProductDetailRow | null;
+      if (!data) throw notFound();
+      return data as ProductDetailRow;
     },
   });
 
-  const product = data;
-  const activeVariants = product?.variants.filter((v) => v.is_active) ?? [];
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+export const Route = createFileRoute("/products/$slug")({
+  component: ProductDetail,
+  loader: async ({ context, params }) => {
+    const product = await context.queryClient.ensureQueryData(
+      productBySlugQueryOptions(params.slug),
+    );
+    const origin = await getSiteOrigin();
+    return { product, origin };
+  },
+  head: ({ loaderData }) => {
+    if (!loaderData) return {};
+    const { product, origin } = loaderData;
+    const title = `${product.name} — Nailed It Woodworks`;
+    const description = product.description
+      ? truncate(product.description, 160)
+      : `Handmade ${product.name.toLowerCase()} by Nailed It Woodworks.`;
+    const primaryImage = product.images.slice().sort((a, b) => a.sort_order - b.sort_order)[0];
+    const imageUrl = primaryImage ? getPublicImageUrl(primaryImage.storage_path) : "";
+    const pageUrl = origin ? `${origin}/products/${product.slug}` : undefined;
+
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "product" },
+        ...(pageUrl ? [{ property: "og:url", content: pageUrl }] : []),
+        ...(imageUrl ? [{ property: "og:image", content: imageUrl }] : []),
+      ],
+    };
+  },
+});
+
+function ProductDetail() {
+  const { slug } = Route.useParams();
+  const [enquireOpen, setEnquireOpen] = useState(false);
+
+  const { data: product } = useSuspenseQuery(productBySlugQueryOptions(slug));
+
+  const activeVariants = product.variants.filter((v) => v.is_active);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const selectedVariant =
     activeVariants.find((v) => v.id === selectedVariantId) ?? activeVariants[0];
-  const images = (product?.images ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  const images = product.images.slice().sort((a, b) => a.sort_order - b.sort_order);
   const [activeImage, setActiveImage] = useState(0);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 mx-auto max-w-6xl px-6 py-16 text-muted-foreground">
-          Loading…
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (error || !product) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 mx-auto max-w-6xl px-6 py-16">
-          <h1 className="font-display text-3xl">Product not found</h1>
-          <p className="mt-3 text-muted-foreground">
-            This piece isn't available.
-          </p>
-          <Button asChild className="mt-6">
-            <Link to="/products">Back to catalogue</Link>
-          </Button>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col">

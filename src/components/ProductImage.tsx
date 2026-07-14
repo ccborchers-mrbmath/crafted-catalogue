@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { getImageUrl } from "@/lib/image-url";
+import { getPublicImageUrl } from "@/lib/image-url";
 import { cn } from "@/lib/utils";
 
 interface ProductImageProps {
@@ -10,21 +9,7 @@ interface ProductImageProps {
 }
 
 export function ProductImage({ path, alt, className, loading = "lazy" }: ProductImageProps) {
-  const [url, setUrl] = useState<string>("");
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!path) {
-      setUrl("");
-      return;
-    }
-    getImageUrl(path).then((u) => {
-      if (!cancelled) setUrl(u);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [path]);
+  const url = getPublicImageUrl(path);
 
   if (!url) {
     return (
@@ -35,17 +20,10 @@ export function ProductImage({ path, alt, className, loading = "lazy" }: Product
         )}
         aria-label={alt}
       >
-        <span className="opacity-50">Loading…</span>
+        <span className="opacity-50">No image</span>
       </div>
     );
   }
 
-  return (
-    <img
-      src={url}
-      alt={alt}
-      loading={loading}
-      className={cn("object-cover", className)}
-    />
-  );
+  return <img src={url} alt={alt} loading={loading} className={cn("object-cover", className)} />;
 }
