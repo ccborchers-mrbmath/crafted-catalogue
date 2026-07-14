@@ -42,7 +42,11 @@ const productsListQueryOptions = queryOptions({
       .eq("is_active", true)
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []) as ProductRow[];
+    return (data ?? []).map((p: any) => ({
+      ...p,
+      variants: p.variants ?? [],
+      images: p.images ?? [],
+    }));
   },
 });
 
