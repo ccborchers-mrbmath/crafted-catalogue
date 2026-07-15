@@ -1,0 +1,19 @@
+-- Restore EXECUTE on public.has_role for the API roles.
+--
+-- The public-read RLS policies on products, product_variants (and the admin
+-- policies elsewhere) are defined as:
+--   USING (is_active OR public.has_role(auth.uid(), 'admin'))
+-- Postgres evaluates has_role() while applying that policy, so the querying
+-- role must be able to EXECUTE it. An earlier migration did:
+--   REVOKE EXECUTE ON FUNCTION public.has_role(...) FROM PUBLIC, anon, authenticated;
+-- which makes every anonymous/authenticated read of those tables fail with
+-- "permission denied for function has_role". This was invisible while the data
+-- was fetched client-side (it surfaced as an empty/error state), but once the
+-- catalogue routes fetch in server-side loaders the thrown error crashes SSR
+-- and the whole page 500s.
+--
+-- has_role is SECURITY DEFINER and only checks whether a given user id holds a
+-- role, so exposing it to the API roles is the intended Supabase RBAC pattern
+-- and is required for these RLS policies to work. RLS still correctly hides
+-- inactive rows from anon.
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO anon, authenticated;
