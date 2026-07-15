@@ -31,27 +31,22 @@ function AboutPage() {
           <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
             About us
           </div>
-          <h1 className="mt-2 font-display text-4xl md:text-5xl">
-            A small workshop, doing it the long way.
-          </h1>
-          <div className="mt-8 space-y-6 text-lg text-foreground/85 leading-relaxed">
-            <p>
-              Nailed It started with one workbench, a set of second-hand chisels
-              and a stubborn refusal to buy flat-pack furniture. Nearly a decade
-              later, we still work the same way: one piece at a time, cut and
-              joined by hand, finished with oil and wax.
-            </p>
-            <p>
-              We build with solid South African hardwoods — oak, kiaat,
-              reclaimed pine — chosen for how they age, not how quickly they
-              can be shipped. Every joint is cut for strength, not speed. Every
-              surface is planed and sanded until it feels right in the hand.
-            </p>
-            <p>
-              If you'd like something built for your space, get in touch. We'll
-              talk through timber, dimensions and lead time, and give you an
-              honest quote before any wood is cut.
-            </p>
+          <h2 className="text-3xl font-serif font-bold mb-6">
+              Crafting timeless pieces, the traditional way.
+          </h2>
+
+          <div className="space-y-6 text-gray-800">
+          <p>
+            What began with a single workbench and vintage chisels has grown into a steadfast dedication to authentic craftsmanship. A decade later, our philosophy remains unchanged: we craft each piece individually, shaped by hand and precision workshop machinery, and finished with natural oil and wax.
+          </p>
+
+          <p>
+            We build exclusively with solid South African hardwoods — like oak, kiaat, and reclaimed pine — selected for their enduring character rather than shipping convenience. Every joint is engineered for lasting strength, not speed. Every surface is meticulously planed and sanded until it feels perfect to the touch.
+          </p>
+
+          <p>
+            If you have a custom piece in mind for your space, let's connect. We will discuss your vision, map out dimensions and lead times, select the right timber, and provide a transparent quote before the first board is cut.
+          </p>
           </div>
 
           <div className="mt-14 grid gap-6 sm:grid-cols-3 border-t border-border pt-10">
