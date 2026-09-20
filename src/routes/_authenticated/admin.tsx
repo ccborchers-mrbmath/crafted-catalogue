@@ -62,6 +62,13 @@ function AdminLayout() {
             Products
           </Link>
           <Link
+            to="/admin/inventory"
+            className="text-foreground/80 hover:text-foreground"
+            activeProps={{ className: "text-foreground font-medium" }}
+          >
+            Inventory
+          </Link>
+          <Link
             to="/admin/enquiries"
             className="text-foreground/80 hover:text-foreground"
             activeProps={{ className: "text-foreground font-medium" }}
